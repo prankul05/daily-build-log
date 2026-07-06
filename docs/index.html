@@ -1,0 +1,551 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>30-Day Claude + TypeScript Tracker</title>
+<style>
+  :root {
+    color-scheme: light;
+    --bg: #f7f7f5;
+    --card: #ffffff;
+    --border: #e5e3df;
+    --text: #2b2a27;
+    --muted: #6b6a66;
+    --accent: #b5603c;
+    --accent-soft: #f1e4dc;
+    --green: #4c7a55;
+    --green-soft: #e6efe7;
+    --radius: 10px;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+    font-size: 14px;
+    line-height: 1.5;
+    padding: 20px;
+  }
+  h1, h2, h3 { margin: 0 0 6px 0; font-weight: 600; }
+  h1 { font-size: 18px; }
+  h2 { font-size: 15px; }
+  h3 { font-size: 13.5px; }
+  a { color: var(--accent); }
+  .sub { color: var(--muted); font-size: 12.5px; margin-bottom: 16px; }
+  .container { max-width: 900px; margin: 0 auto; }
+  .card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 16px 18px;
+    margin-bottom: 16px;
+  }
+  .row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+  .between { justify-content: space-between; }
+  .pill {
+    display: inline-block;
+    background: var(--accent-soft);
+    color: var(--accent);
+    border-radius: 20px;
+    padding: 2px 10px;
+    font-size: 11.5px;
+    font-weight: 600;
+  }
+  .pill.done { background: var(--green-soft); color: var(--green); }
+  .progress-outer {
+    background: #eeece7;
+    border-radius: 20px;
+    height: 8px;
+    overflow: hidden;
+    flex: 1;
+    min-width: 120px;
+  }
+  .progress-inner { background: var(--accent); height: 100%; border-radius: 20px; transition: width .2s; }
+  input[type=date], input[type=text], textarea {
+    font-family: inherit;
+    font-size: 13px;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 6px 8px;
+    color: var(--text);
+    background: #fff;
+  }
+  textarea { width: 100%; resize: vertical; min-height: 44px; }
+  button {
+    font-family: inherit;
+    font-size: 12.5px;
+    font-weight: 600;
+    border: 1px solid var(--accent);
+    background: var(--accent);
+    color: #fff;
+    border-radius: 6px;
+    padding: 6px 12px;
+    cursor: pointer;
+  }
+  button.secondary { background: #fff; color: var(--accent); }
+  .task {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+    padding: 6px 0;
+    border-bottom: 1px dashed var(--border);
+  }
+  .task:last-child { border-bottom: none; }
+  .task input[type=checkbox] { margin-top: 3px; }
+  .task label { flex: 1; }
+  .task .res { display: block; font-size: 12px; color: var(--muted); margin-top: 2px; }
+  .day-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 4px;
+    border-bottom: 1px solid var(--border);
+    cursor: pointer;
+  }
+  .day-row:last-child { border-bottom: none; }
+  .day-num {
+    width: 28px; height: 28px; border-radius: 50%;
+    background: #eeece7; color: var(--muted);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 12px; font-weight: 700; flex-shrink: 0;
+  }
+  .day-num.done { background: var(--green); color: #fff; }
+  .day-num.today { background: var(--accent); color: #fff; }
+  .day-title { flex: 1; font-size: 13px; }
+  .day-title .proj { color: var(--muted); font-size: 11.5px; }
+  .caret { color: var(--muted); font-size: 11px; }
+  .day-detail { padding: 4px 4px 10px 42px; }
+  .week-header {
+    font-size: 12px; font-weight: 700; text-transform: uppercase;
+    letter-spacing: .04em; color: var(--muted); margin: 14px 0 4px 0;
+  }
+  .adr-item, .skill-item {
+    border: 1px solid var(--border); border-radius: 8px; padding: 10px 12px; margin-bottom: 8px; font-size: 12.5px;
+  }
+  .adr-item .meta, .skill-item .meta { color: var(--muted); font-size: 11.5px; margin-bottom: 4px; }
+  .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .footer-note { font-size: 12px; color: var(--muted); margin-top: 6px; }
+  .hero-task-list { margin-top: 10px; }
+  .empty { color: var(--muted); font-size: 12.5px; font-style: italic; }
+  .del { color: var(--muted); cursor: pointer; font-size: 11px; float: right; }
+</style>
+</head>
+<body>
+<div class="container">
+
+  <div class="row between">
+    <h1>30-Day Claude + TypeScript Tracker</h1>
+    <div class="row" style="gap:6px;">
+      <label class="sub" style="margin:0;">Day 1 starts:</label>
+      <input type="date" id="startDate">
+    </div>
+  </div>
+  <div class="sub">System design + AI leverage, EM track. Free-tier-first via <code>llmClient.ts</code>. Companion files: <code>30-day-claude-typescript-curriculum.md</code>, <code>project-specs.md</code>, <code>project-learning-path.md</code>, <code>llm-provider-setup.md</code>.</div>
+
+  <div class="card">
+    <div class="row between">
+      <h2 id="heroTitle">Today</h2>
+      <span class="pill" id="overallPill">0% complete</span>
+    </div>
+    <div class="row" style="margin-top:6px;">
+      <div class="progress-outer"><div class="progress-inner" id="overallBar" style="width:0%;"></div></div>
+    </div>
+    <div class="hero-task-list" id="heroTasks"></div>
+  </div>
+
+  <div class="card">
+    <h2>All 30 Days</h2>
+    <div id="dayList"></div>
+  </div>
+
+  <div class="card">
+    <h2>Running Practices reminder</h2>
+    <div class="sub" style="margin-bottom:0;">
+      Model tier is a design decision, not an afterthought — default Gemini free tier, Haiku for Claude-specific work. Set a spending alert once. Commit after every green block. Refine a Skill/CLAUDE.md rule the moment friction shows up — don't wait for review days.
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="row between">
+      <h2>ADR Log</h2>
+      <span class="pill" id="adrCount">0 entries</span>
+    </div>
+    <div class="sub" style="margin-bottom:8px;">Context → Decision → Alternatives → Consequences. Log real decisions (datastore, model tier, sync vs. polling), not a diary.</div>
+    <div class="grid2">
+      <input type="text" id="adrContext" placeholder="Context">
+      <input type="text" id="adrDecision" placeholder="Decision">
+      <input type="text" id="adrAlt" placeholder="Alternatives considered">
+      <input type="text" id="adrCons" placeholder="Consequences">
+    </div>
+    <div class="row" style="margin-top:8px;">
+      <button onclick="addADR()">Add entry</button>
+    </div>
+    <div id="adrList" style="margin-top:12px;"></div>
+  </div>
+
+  <div class="card">
+    <div class="row between">
+      <h2>Skills / CLAUDE.md Log</h2>
+      <span class="pill" id="skillCount">0 tracked</span>
+    </div>
+    <div class="sub" style="margin-bottom:8px;">Living infrastructure, not one-and-done. Log what you built, revise the note whenever you touch it again.</div>
+    <div class="grid2">
+      <input type="text" id="skillName" placeholder="Skill / rule name">
+      <input type="text" id="skillNote" placeholder="What it does / last change">
+    </div>
+    <div class="row" style="margin-top:8px;">
+      <button onclick="addSkill()">Add / update</button>
+    </div>
+    <div id="skillList" style="margin-top:12px;"></div>
+  </div>
+
+  <div class="footer-note">
+    Data is stored locally in this view (localStorage) — it persists across reloads but is specific to this device. Full block-by-block resources live in <code>project-learning-path.md</code>; full specs live in <code>project-specs.md</code>.
+  </div>
+
+</div>
+
+<script>
+const L = (label, url) => url ? {label, url} : {label};
+
+const DAYS = [
+  {d:1, w:1, t:"Install Claude Code + TS toolchain; sketch system design", p:null, tasks:[
+    L("Install Claude Code","https://code.claude.com/docs/en/quickstart"),
+    L("Set up TS project (strict tsconfig)","https://dev.to/gabrielanhaia/real-world-typescript-project-setup-for-2026-5an"),
+    L("Generate first CLAUDE.md (/init)","https://code.claude.com/docs/en/memory"),
+    L("Read prompting fundamentals","https://docs.anthropic.com/en/docs/build-with-claude/prompt-engineering/overview"),
+    L("Sketch system design for Projects 1 & 3 before coding")
+  ]},
+  {d:2, w:1, t:"Messages API + streaming; provider-agnostic client", p:null, tasks:[
+    L("Read TypeScript SDK docs","https://platform.claude.com/docs/en/api/sdks/typescript"),
+    L("Set up llmClient.ts + .env (Gemini free tier default) — see llm-provider-setup.md"),
+    L("Build CLI script with streaming","https://github.com/anthropics/anthropic-sdk-typescript/blob/main/examples/streaming.ts"),
+    L("Decide default model tier + set a spending alert")
+  ]},
+  {d:3, w:1, t:"Prompt engineering practice", p:null, tasks:[
+    L("Anthropic interactive prompt tutorial (XML tags, few-shot)","https://github.com/anthropics/prompt-eng-interactive-tutorial"),
+    L("Rewrite 5 vague prompts to be explicit"),
+    L("Add \"how to write instructions\" section to CLAUDE.md")
+  ]},
+  {d:4, w:1, t:"Project 1: Group Trip Planner — scaffold", p:"Group Trip Planner", tasks:[
+    L("Scaffold the app","https://dev.to/gabrielanhaia/real-world-typescript-project-setup-for-2026-5an"),
+    L("Auth + realtime datastore","https://dev.to/sahilverma_dev/firebase-with-react-and-typescript-a-comprehensive-guide-3fn5"),
+    L("Verify realtime sync + write security rules","https://www.geeksforgeeks.org/firebase/integrating-real-time-database-and-authentication-using-next-js-and-firebase/")
+  ]},
+  {d:5, w:1, t:"Project 1: Claude suggestions + prompt caching", p:"Group Trip Planner", tasks:[
+    L("Claude suggestions call","https://kalyna.pro/claude-api-nodejs-tutorial/"),
+    L("Prompt engineering pass","https://platform.claude.com/docs/en/build-with-claude/prompt-engineering/claude-prompting-best-practices"),
+    L("Prompt caching","https://platform.claude.com/docs/en/build-with-claude/prompt-caching"),
+    L("Milestone: save trip-suggestion prompt as a Skill")
+  ]},
+  {d:6, w:1, t:"Project 3: AI Storybook — structured output", p:"AI Storybook Creator", tasks:[
+    L("Define the Zod schema","https://zod.dev/basics"),
+    L("Prompt the constraints (reuse prompting-best-practices)"),
+    L("Force the schema","https://platform.claude.com/docs/en/build-with-claude/structured-outputs"),
+    L("Handle failure gracefully (retry loop)","https://snippets.ltd/blog/structured-outputs-with-claude-json-schemas-validation-retry-loops"),
+    L("Milestone: promote schema-forcing logic into a shared utility")
+  ]},
+  {d:7, w:1, t:"Review week 1", p:null, tasks:[
+    L("Audit/prune Skills + CLAUDE.md rules built this week"),
+    L("Teach-back: explain this week's core concept out loud"),
+    L("Commit + jot portfolio notes")
+  ]},
+  {d:8, w:2, t:"Claude vision basics", p:null, tasks:[
+    L("Read Vision docs","https://platform.claude.com/docs/en/build-with-claude/vision"),
+    L("Send one test image as a content block")
+  ]},
+  {d:9, w:2, t:"Project 2: Draw and Guess — single device (P0)", p:"Draw and Guess", tasks:[
+    L("Canvas drawing basics","https://dev.to/javascriptacademy/create-a-drawing-app-using-javascript-and-canvas-2an1"),
+    L("Export to PNG (toDataURL) + send to Claude vision"),
+    L("Claude guesses (structured {guess, confidence})"),
+    L("Single-device game loop: turns, timer, score")
+  ]},
+  {d:10, w:2, t:"Project 2: Realtime multiplayer sync (P1 stretch)", p:"Draw and Guess", tasks:[
+    L("Realtime sync docs","https://supabase.com/docs/guides/realtime"),
+    L("Two tabs, live strokes, throttle broadcasts")
+  ]},
+  {d:11, w:2, t:"Project 5: Photo Animator", p:"Photo Animator", tasks:[
+    L("Upload + preview UI"),
+    L("Vision analysis (reuse Day 8)"),
+    L("Structure the motion prompt (reuse Day 6 schema utility)"),
+    L("Combine into one flow"),
+    L("Optional: Runway API for real video","https://docs.dev.runwayml.com/guides/using-the-api/")
+  ]},
+  {d:12, w:2, t:"Tool use / function-calling schemas", p:null, tasks:[
+    L("Tool use overview","https://platform.claude.com/docs/en/agents-and-tools/tool-use/overview")
+  ]},
+  {d:13, w:2, t:"Project 7: Resume Builder", p:"Resume Builder", tasks:[
+    L("Design the generate_resume tool schema"),
+    L("Force the tool call, render editable resume"),
+    L("Chain generate_cover_letter off the structured resume"),
+    L("Export to PDF/docx"),
+    L("Make it editable before export")
+  ]},
+  {d:14, w:2, t:"Review week 2", p:null, tasks:[
+    L("Write a project \"run app\" Skill"),
+    L("Check token spend so far"),
+    L("Audit/prune Skills built this week")
+  ]},
+  {d:15, w:3, t:"Project 4: Language Learning App", p:"Language Learning App", tasks:[
+    L("Text-to-speech","https://dev.to/zolomohan/text-to-speech-using-the-web-speech-api-in-javascript-2gfo"),
+    L("Speech-to-text","https://www.f22labs.com/blogs/web-speech-api-a-beginners-guide/"),
+    L("Grading tool call (reuse tool-use pattern)"),
+    L("Build the practice loop: hear → speak → grade → retry")
+  ]},
+  {d:16, w:3, t:"Project 10: Podcast Generator — script", p:"Podcast Generator", tasks:[
+    L("Design the two-host system prompt (reuse prompting-best-practices)"),
+    L("Feed in source material; decide summarize vs full-context"),
+    L("Generate + parse the speaker-tagged script")
+  ]},
+  {d:17, w:3, t:"Project 10: TTS + stitch (P1)", p:"Podcast Generator", tasks:[
+    L("Text to speech","https://elevenlabs.io/docs/developers/quickstart"),
+    L("Stitch full episode audio (P1 — ok to stop at first few lines if tight on time)")
+  ]},
+  {d:18, w:3, t:"Web search/fetch tools + agent loops", p:null, tasks:[
+    L("Web search tool docs","https://platform.claude.com/docs/en/agents-and-tools/tool-use/web-search-tool"),
+    L("Building Effective AI Agents (patterns reference)","https://www.anthropic.com/research/building-effective-agents"),
+    L("Add \"external content is untrusted\" rule to CLAUDE.md")
+  ]},
+  {d:19, w:3, t:"Project 6: News Briefing App", p:"News Briefing App", tasks:[
+    L("Search tool pattern (reuse Day 18)"),
+    L("Topic selection UI"),
+    L("Ground the prompt + injection awareness","https://www.oligo.security/academy/prompt-injection-impact-attack-anatomy-prevention"),
+    L("Structure the headline output (reuse schema utility)"),
+    L("Build the feed + refresh")
+  ]},
+  {d:20, w:3, t:"Project 9: Competitor Analysis App", p:"Competitor Analysis App", tasks:[
+    L("Extend the search loop — orchestrator-workers pattern"),
+    L("Add a tool-call budget"),
+    L("Synthesize + run the injected-instruction test"),
+    L("Render comparison table + citations")
+  ]},
+  {d:21, w:3, t:"Review week 3", p:null, tasks:[
+    L("Write a code-review Skill"),
+    L("Trim CLAUDE.md under 200 lines"),
+    L("Audit/prune Skills built this week")
+  ]},
+  {d:22, w:4, t:"Agent SDK + MCP concept", p:null, tasks:[
+    L("Agent SDK overview","https://code.claude.com/docs/en/agent-sdk/overview"),
+    L("MCP in the SDK","https://docs.claude.com/en/docs/agent-sdk/mcp")
+  ]},
+  {d:23, w:4, t:"Project 8: Conference App — MCP + agenda loop", p:"Conference App", tasks:[
+    L("Install SDK, run a basic query()"),
+    L("Connect Google Maps MCP (scope the API key first)","https://thedailyworkflow.com/mcp/tutorial/maps-and-geolocation-in-claude-google-maps-mcp"),
+    L("Model the session schedule"),
+    L("Build the agenda-builder agent loop")
+  ]},
+  {d:24, w:4, t:"Project 8: Permission hooks", p:"Conference App", tasks:[
+    L("Configure permissions","https://code.claude.com/docs/en/agent-sdk/permissions"),
+    L("Require explicit confirmation before non-read MCP actions")
+  ]},
+  {d:25, w:4, t:"Project 11: Connect Gmail, Calendar, Drive MCP", p:"Morning Dashboard", tasks:[
+    L("Gmail MCP","https://composio.dev/toolkits/gmail/framework/claude-agents-sdk"),
+    L("Calendar MCP","https://composio.dev/toolkits/googlecalendar/framework/claude-agents-sdk"),
+    L("Drive MCP","https://composio.dev/toolkits/googledrive/framework/claude-agents-sdk"),
+    L("Read-only scopes only — set this before wiring the loop")
+  ]},
+  {d:26, w:4, t:"Project 11: Cross-source agent loop", p:"Morning Dashboard", tasks:[
+    L("Build the loop reading all 3 sources"),
+    L("Treat email content as untrusted (strictest version of the rule yet)")
+  ]},
+  {d:27, w:4, t:"Project 11: Structure briefing + lock permissions", p:"Morning Dashboard", tasks:[
+    L("Structure the daily briefing output"),
+    L("Hard-block non-read actions by default"),
+    L("Instrument token cost per run")
+  ]},
+  {d:28, w:4, t:"Cost/efficiency deep-dive", p:null, tasks:[
+    L("Model selection guide","https://platform.claude.com/docs/en/about-claude/models/choosing-a-model"),
+    L("Review which provider/model each project actually needs")
+  ]},
+  {d:29, w:4, t:"Polish + README + push to GitHub", p:null, tasks:[
+    L("Polish all 11 projects"),
+    L("Write a README per project"),
+    L("Push everything to GitHub")
+  ]},
+  {d:30, w:4, t:"Retrospective", p:null, tasks:[
+    L("Update CLAUDE.md + Skills library based on lessons learned"),
+    L("Retire/merge redundant Skills (capstone cleanup)"),
+    L("Write a short portfolio summary")
+  ]}
+];
+
+const STORE_KEY = "claudeTsCurriculumTracker_v1";
+
+function loadState() {
+  try {
+    const raw = localStorage.getItem(STORE_KEY);
+    if (raw) return JSON.parse(raw);
+  } catch(e) {}
+  const tmr = new Date();
+  tmr.setDate(tmr.getDate() + 1);
+  return { startDate: tmr.toISOString().slice(0,10), done: {}, adr: [], skills: [] };
+}
+function saveState() { localStorage.setItem(STORE_KEY, JSON.stringify(state)); }
+
+let state = loadState();
+
+function currentDayNumber() {
+  const start = new Date(state.startDate + "T00:00:00");
+  const today = new Date();
+  today.setHours(0,0,0,0);
+  const diff = Math.floor((today - start) / 86400000) + 1;
+  return Math.min(30, Math.max(1, diff));
+}
+
+function taskId(d, i) { return d + "-" + i; }
+
+function totalTasks() { return DAYS.reduce((a,day)=>a+day.tasks.length,0); }
+function doneTasks() { return Object.values(state.done).filter(Boolean).length; }
+
+function renderTaskRow(day, i, task) {
+  const id = taskId(day.d, i);
+  const checked = !!state.done[id];
+  const resHtml = task.url ? `<a class="res" href="${task.url}" target="_blank" rel="noopener">${task.url.replace(/^https?:\/\//,'').slice(0,60)}${task.url.length>63?'…':''}</a>` : "";
+  return `<div class="task">
+    <input type="checkbox" id="chk-${id}" ${checked?'checked':''} onchange="toggleTask('${id}')">
+    <label for="chk-${id}">${task.label}${resHtml}</label>
+  </div>`;
+}
+
+function renderHero() {
+  const dn = currentDayNumber();
+  const day = DAYS.find(x => x.d === dn);
+  document.getElementById('heroTitle').textContent = `Today — Day ${dn}${day.p ? " · " + day.p : ""}: ${day.t}`;
+  document.getElementById('heroTasks').innerHTML = day.tasks.map((t,i)=>renderTaskRow(day,i,t)).join("");
+  const tt = totalTasks(), dt = doneTasks();
+  const pct = Math.round(100*dt/tt);
+  document.getElementById('overallPill').textContent = pct + "% complete (" + dt + "/" + tt + " tasks)";
+  document.getElementById('overallBar').style.width = pct + "%";
+}
+
+function dayComplete(day) {
+  return day.tasks.every((t,i)=> state.done[taskId(day.d,i)]);
+}
+
+let expanded = {};
+
+function renderDayList() {
+  const dn = currentDayNumber();
+  let html = "";
+  let lastWeek = 0;
+  DAYS.forEach(day => {
+    if (day.w !== lastWeek) {
+      html += `<div class="week-header">Week ${day.w}</div>`;
+      lastWeek = day.w;
+    }
+    const cls = dayComplete(day) ? "done" : (day.d === dn ? "today" : "");
+    const icon = dayComplete(day) ? "✓" : day.d;
+    html += `<div class="day-row" onclick="toggleExpand(${day.d})">
+      <div class="day-num ${cls}">${icon}</div>
+      <div class="day-title">${day.t} ${day.p ? `<span class="proj">· ${day.p}</span>` : ""}</div>
+      <div class="caret">${expanded[day.d] ? "▲" : "▼"}</div>
+    </div>`;
+    if (expanded[day.d]) {
+      html += `<div class="day-detail">${day.tasks.map((t,i)=>renderTaskRow(day,i,t)).join("")}</div>`;
+    }
+  });
+  document.getElementById('dayList').innerHTML = html;
+}
+
+function toggleExpand(d) {
+  expanded[d] = !expanded[d];
+  renderDayList();
+}
+
+function toggleTask(id) {
+  state.done[id] = !state.done[id];
+  saveState();
+  renderHero();
+  renderDayList();
+}
+
+function renderADR() {
+  document.getElementById('adrCount').textContent = state.adr.length + " entries";
+  if (!state.adr.length) {
+    document.getElementById('adrList').innerHTML = '<div class="empty">No entries yet — log your first real decision (datastore, model tier, sync strategy...).</div>';
+    return;
+  }
+  document.getElementById('adrList').innerHTML = state.adr.slice().reverse().map((e,ri) => {
+    const i = state.adr.length - 1 - ri;
+    return `<div class="adr-item">
+      <span class="del" onclick="deleteADR(${i})">remove</span>
+      <div class="meta">${e.date}</div>
+      <div><b>Context:</b> ${e.context}</div>
+      <div><b>Decision:</b> ${e.decision}</div>
+      <div><b>Alternatives:</b> ${e.alt}</div>
+      <div><b>Consequences:</b> ${e.cons}</div>
+    </div>`;
+  }).join("");
+}
+
+function addADR() {
+  const context = document.getElementById('adrContext').value.trim();
+  const decision = document.getElementById('adrDecision').value.trim();
+  const alt = document.getElementById('adrAlt').value.trim();
+  const cons = document.getElementById('adrCons').value.trim();
+  if (!decision) return;
+  state.adr.push({date: new Date().toISOString().slice(0,10), context, decision, alt, cons});
+  saveState();
+  ['adrContext','adrDecision','adrAlt','adrCons'].forEach(id => document.getElementById(id).value = "");
+  renderADR();
+}
+function deleteADR(i) {
+  state.adr.splice(i,1);
+  saveState();
+  renderADR();
+}
+
+function renderSkills() {
+  document.getElementById('skillCount').textContent = state.skills.length + " tracked";
+  if (!state.skills.length) {
+    document.getElementById('skillList').innerHTML = '<div class="empty">Nothing logged yet — add a Skill/CLAUDE.md rule the first time you create or edit one.</div>';
+    return;
+  }
+  document.getElementById('skillList').innerHTML = state.skills.slice().reverse().map((s,ri) => {
+    const i = state.skills.length - 1 - ri;
+    return `<div class="skill-item">
+      <span class="del" onclick="deleteSkill(${i})">remove</span>
+      <div class="meta">last touched ${s.date}</div>
+      <div><b>${s.name}</b> — ${s.note}</div>
+    </div>`;
+  }).join("");
+}
+function addSkill() {
+  const name = document.getElementById('skillName').value.trim();
+  const note = document.getElementById('skillNote').value.trim();
+  if (!name) return;
+  const existing = state.skills.find(s => s.name.toLowerCase() === name.toLowerCase());
+  if (existing) {
+    existing.note = note; existing.date = new Date().toISOString().slice(0,10);
+  } else {
+    state.skills.push({name, note, date: new Date().toISOString().slice(0,10)});
+  }
+  saveState();
+  document.getElementById('skillName').value = "";
+  document.getElementById('skillNote').value = "";
+  renderSkills();
+}
+function deleteSkill(i) {
+  state.skills.splice(i,1);
+  saveState();
+  renderSkills();
+}
+
+document.getElementById('startDate').value = state.startDate;
+document.getElementById('startDate').addEventListener('change', (e) => {
+  state.startDate = e.target.value;
+  saveState();
+  renderAll();
+});
+
+function renderAll() {
+  renderHero();
+  renderDayList();
+  renderADR();
+  renderSkills();
+}
+renderAll();
+</script>
+</body>
+</html>
